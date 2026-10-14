@@ -1,0 +1,25 @@
+{"query": "bevel edges of a mesh", "expected": ["bpy.ops.mesh.bevel", "bmesh.ops.bevel"]}
+{"query": "add a subdivision surface modifier to an object", "expected": ["bpy.types.ObjectModifiers.new", "bpy.ops.object.modifier_add", "bpy.types.SubsurfModifier"]}
+{"query": "create a new cube primitive", "expected": ["bpy.ops.mesh.primitive_cube_add", "bmesh.ops.create_cube"]}
+{"query": "extrude faces along their normals", "expected": ["bpy.ops.mesh.extrude_region_shrink_fatten", "bpy.ops.mesh.extrude_faces_move", "bmesh.ops.extrude_face_region", "bpy.ops.mesh.extrude_region_move"]}
+{"query": "join several objects into one", "expected": ["bpy.ops.object.join"]}
+{"query": "set the render engine to Cycles", "expected": ["bpy.types.RenderSettings.engine"]}
+{"query": "render the scene and save the image to a file", "expected": ["bpy.ops.render.render", "bpy.types.RenderSettings.filepath"]}
+{"query": "export the scene as glTF", "expected": ["bpy.ops.export_scene.gltf"]}
+{"query": "save the current blend file to a path", "expected": ["bpy.ops.wm.save_as_mainfile", "bpy.ops.wm.save_mainfile"]}
+{"query": "build a mesh from lists of vertices and faces", "expected": ["bpy.types.Mesh.from_pydata"]}
+{"query": "apply a modifier so it becomes real geometry", "expected": ["bpy.ops.object.modifier_apply"]}
+{"query": "link an object to a collection", "expected": ["bpy.types.CollectionObjects.link"]}
+{"query": "smooth shading for an object", "expected": ["bpy.ops.object.shade_smooth", "bpy.types.Mesh.shade_smooth", "bpy.types.MeshPolygon.use_smooth"]}
+{"query": "convert a curve to a mesh", "expected": ["bpy.ops.object.convert"]}
+{"query": "mirror modifier axis settings", "expected": ["bpy.types.MirrorModifier.use_axis", "bpy.types.MirrorModifier"]}
+{"query": "skin modifier vertex radius", "expected": ["bpy.types.MeshSkinVertex.radius", "bpy.types.MeshSkinVertex", "bpy.types.SkinModifier"]}
+{"query": "create a metaball object", "expected": ["bpy.types.BlendDataMetaBalls.new", "bpy.ops.object.metaball_add", "bpy.types.MetaBallElements.new"]}
+{"query": "find where a ray hits an object's surface", "expected": ["bpy.types.Object.ray_cast", "bpy.types.Scene.ray_cast", "mathutils.bvhtree.BVHTree.ray_cast"]}
+{"query": "rotate a vector by a quaternion", "expected": ["mathutils.Vector.rotate", "mathutils.Quaternion"]}
+{"query": "get the mesh with all modifiers evaluated", "expected": ["bpy.types.ID.evaluated_get", "bpy.types.Object.to_mesh", "bpy.types.Depsgraph"]}
+{"query": "Object.matrix_world", "expected": ["bpy.types.Object.matrix_world"]}
+{"query": "bpy.ops.object.origin_set", "expected": ["bpy.ops.object.origin_set"]}
+{"query": "remove doubles merge by distance", "expected": ["bpy.ops.mesh.remove_doubles", "bmesh.ops.remove_doubles"]}
+{"query": "recalculate normals to point outside", "expected": ["bpy.ops.mesh.normals_make_consistent", "bmesh.ops.recalc_face_normals"]}
+{"query": "why does my operator fail with a context is incorrect error", "expected": ["info_gotchas_operators.html", "bpy.types.Context.temp_override", "bpy.ops.html"]}
