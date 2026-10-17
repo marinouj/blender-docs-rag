@@ -22,10 +22,12 @@ STOPWORDS = set(
 
 
 class Retriever:
-    def __init__(self):
-        self.db = sqlite3.connect(config.INDEX_DB)
+    def __init__(self, chunks: str = config.DEFAULT_CHUNKS):
+        if not config.index_db(chunks).exists():
+            raise SystemExit(f"no index for {chunks!r}: run `chunk --chunks {chunks}` and `index --chunks {chunks}`")
+        self.db = sqlite3.connect(config.index_db(chunks))
         self.db.row_factory = sqlite3.Row
-        self.vectors = np.load(config.EMBEDDINGS_NPY)
+        self.vectors = np.load(config.embeddings_npy(chunks))
 
     @cached_property
     def model(self):

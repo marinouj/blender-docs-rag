@@ -78,6 +78,14 @@ The eval exists to make changes measurable:
 4. Compare the per-query table as well as the summary. A change that fixes two
    queries and breaks two looks like no change in the summary.
 
+## Comparing chunking methods
+
+`eval --chunks structured fixed recursive` scores each method, then prints a
+summary of all of them. It adds `chars@8`, the mean characters in the top 8
+chunks. Bigger chunks make a hit easier, so compare hit rates together with how
+much text they cost. A generic chunk counts as an API entry when it contains
+that entry's name line. Results are in [chunking.md](chunking.md).
+
 ## Limits
 
 - **Small.** With 25 queries, one query is worth 0.04. Differences of one or

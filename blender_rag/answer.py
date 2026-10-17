@@ -30,12 +30,12 @@ def format_context(chunks: list[dict]) -> str:
     return "\n\n".join(f"[{i}] {c['url']}\n{c['text']}" for i, c in enumerate(chunks, 1))
 
 
-def ask(question: str, k: int = 8, mode: str = "hybrid") -> list[dict]:
+def ask(question: str, k: int = 8, mode: str = "hybrid", chunks_name: str = config.DEFAULT_CHUNKS) -> list[dict]:
     """Stream the answer to stdout and return the chunks it was given."""
     load_env()
     if not (os.environ.get("ANTHROPIC_API_KEY") or os.environ.get("ANTHROPIC_AUTH_TOKEN")):
         raise SystemExit("No ANTHROPIC_API_KEY. Copy .env.example to .env and add your key.")
-    chunks = Retriever().search(question, k=k, mode=mode)
+    chunks = Retriever(chunks_name).search(question, k=k, mode=mode)
     client = anthropic.Anthropic()
     try:
         with client.beta.messages.stream(

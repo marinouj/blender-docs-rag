@@ -29,6 +29,19 @@ cp .env.example .env                   # add ANTHROPIC_API_KEY, needed for `ask`
 uv run python -m blender_rag ask "How do I bevel selected edges with 3 segments?"
 ```
 
+### Comparing chunking methods
+
+Every command takes `--chunks`, and each method gets its own folder under
+`data/`. The default is `structured`. `fixed` and `recursive` default to
+1,000 characters with 150 overlap; set both with `fixed-800-100`.
+
+```sh
+uv run python -m blender_rag chunk --chunks fixed
+uv run python -m blender_rag index --chunks fixed
+uv run python -m blender_rag eval --chunks structured fixed recursive
+uv run python -m blender_rag search "bevel edges of a mesh" --chunks recursive
+```
+
 ## Baseline retrieval scores
 
 25 queries, rank of the first correct chunk:

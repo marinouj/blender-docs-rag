@@ -1,11 +1,17 @@
 """Stage 1: turn the Sphinx HTML docs into chunks.
 
-The docs are already structured, so chunking follows that structure instead of
-cutting every N characters:
+The default `structured` method follows the structure of the docs:
 
 - one chunk per API entry (operator, function, method, attribute, class), which
   keeps a signature together with its parameter docs
 - one chunk per prose section (quickstart, gotchas, examples above a class)
+
+Two generic methods are here for comparison. Both split the same text: the
+structured units of a page joined in order, so only the boundaries differ.
+
+- `fixed`: cut every `size` characters, each window overlapping the last
+- `recursive`: split on blank lines, then lines, sentences, words, and pack the
+  pieces into chunks of up to `size` characters
 """
 
 import copy
@@ -32,10 +38,13 @@ HIERARCHY = re.compile(r"^(base classes|subclasses) —")
 class Chunk:
     id: int
     kind: str  # function | method | attribute | data | class | prose | ...
-    symbol: str  # qualified API name, or "" for prose
+    symbol: str  # qualified API name, or "" for prose and generic chunks
     title: str
     url: str
     text: str
+    # API entries whose name line is in the chunk. Used by the eval only, so the
+    # generic methods are scored on the same terms without searching on it.
+    symbols: list[str]
 
 
 def download():
@@ -122,13 +131,90 @@ def prose_chunks(article: Tag, page: str, page_title: str):
             yield "prose", "", title, f"{page}{anchor}", f"{title}\n\n{part.strip()}"
 
 
-def build():
+# Separators for recursive splitting, coarsest first. Units on a page are joined
+# with a blank line, so the first split falls between API entries.
+SEPARATORS = ["\n\n", "\n", ". ", " ", ""]
+UNIT_SEP = "\n\n"
+
+
+def fixed_spans(start: int, end: int, size: int, overlap: int) -> list[tuple[int, int]]:
+    spans = []
+    while True:
+        spans.append((start, min(start + size, end)))
+        if start + size >= end:
+            return spans
+        start += size - overlap
+
+
+def merge_spans(pieces: list[tuple[int, int]], size: int, overlap: int) -> list[tuple[int, int]]:
+    """Pack consecutive pieces into chunks of up to `size`, starting each chunk
+    with the trailing pieces of the last one that fit in `overlap`."""
+    chunks, current = [], []
+    for piece in pieces:
+        if current and piece[1] - current[0][0] > size:
+            chunks.append((current[0][0], current[-1][1]))
+            while current and (current[-1][1] - current[0][0] > overlap or piece[1] - current[0][0] > size):
+                current.pop(0)
+        current.append(piece)
+    if current:
+        chunks.append((current[0][0], current[-1][1]))
+    return chunks
+
+
+def recursive_spans(text: str, start: int, end: int, size: int, overlap: int, seps=SEPARATORS) -> list[tuple[int, int]]:
+    if end - start <= size:
+        return [(start, end)]
+    sep = next(s for s in seps if s == "" or s in text[start:end])
+    if sep == "":
+        return fixed_spans(start, end, size, overlap)
+    pieces, at = [], start
+    while (found := text.find(sep, at, end)) != -1:
+        pieces.append((at, found + len(sep)))
+        at = found + len(sep)
+    if at < end:
+        pieces.append((at, end))
+
+    # Small pieces are packed together; a piece too big on its own is split on
+    # the next separator and never shares a chunk with its neighbours.
+    finer = seps[seps.index(sep) + 1 :]
+    chunks, small = [], []
+    for piece in pieces:
+        if piece[1] - piece[0] <= size:
+            small.append(piece)
+        else:
+            chunks += merge_spans(small, size, overlap) + recursive_spans(text, *piece, size, overlap, finer)
+            small = []
+    return chunks + merge_spans(small, size, overlap)
+
+
+def generic_chunks(units: list[tuple], page: str, page_title: str, method: str, size: int, overlap: int):
+    text = UNIT_SEP.join(u[4] for u in units)
+    name_lines, at = [], 0  # (symbol, start, end) of each API entry's first line
+    for _, symbol, _, _, unit_text in units:
+        if symbol:
+            name_lines.append((symbol, at, at + len(unit_text.split("\n", 1)[0])))
+        at += len(unit_text) + len(UNIT_SEP)
+
+    if method == "fixed":
+        spans = fixed_spans(0, len(text), size, overlap)
+    else:
+        spans = recursive_spans(text, 0, len(text), size, overlap)
+    for start, end in spans:
+        if part := text[start:end].strip():
+            symbols = [sym for sym, s, e in name_lines if start <= s and e <= end]
+            yield method, "", page_title, page, part, symbols
+
+
+def build(name: str = config.DEFAULT_CHUNKS):
+    method, size, overlap = config.parse_chunks(name)
+    out_path = config.chunks_jsonl(name)
+    out_path.parent.mkdir(parents=True, exist_ok=True)
     download()
     html_dir = next(config.RAW_HTML.iterdir())
     pages = sorted(p for p in html_dir.glob("*.html") if not SKIP_PAGES.match(p.name))
     kinds: dict[str, int] = {}
     n = 0
-    with config.CHUNKS_JSONL.open("w") as out:
+    with out_path.open("w") as out:
         for path in pages:
             soup = BeautifulSoup(path.read_text(encoding="utf-8"), "lxml")
             article = soup.find("article", id="furo-main-content")
@@ -136,12 +222,16 @@ def build():
                 continue
             h1 = article.find("h1")
             page_title = clean_text(h1) if h1 else path.stem
-            found = [*api_chunks(article, path.name), *prose_chunks(article, path.name, page_title)]
-            for kind, symbol, title, url, text in found:
-                chunk = Chunk(n, kind, symbol, title, config.DOCS_BASE_URL + url, text)
+            units = [*api_chunks(article, path.name), *prose_chunks(article, path.name, page_title)]
+            if method == "structured":
+                found = [(*u, [u[1]] if u[1] else []) for u in units]
+            else:
+                found = generic_chunks(units, path.name, page_title, method, size, overlap)
+            for kind, symbol, title, url, text, symbols in found:
+                chunk = Chunk(n, kind, symbol, title, config.DOCS_BASE_URL + url, text, symbols)
                 out.write(json.dumps(asdict(chunk)) + "\n")
                 kinds[kind] = kinds.get(kind, 0) + 1
                 n += 1
-    print(f"{n} chunks from {len(pages)} pages -> {config.CHUNKS_JSONL}")
+    print(f"{n} chunks from {len(pages)} pages -> {out_path}")
     for kind, count in sorted(kinds.items(), key=lambda kv: -kv[1]):
         print(f"  {kind:12} {count}")
